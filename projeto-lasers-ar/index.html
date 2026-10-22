@@ -12,7 +12,7 @@
     <style>
       html, body { margin: 0; padding: 0; overflow: hidden; font-family: sans-serif; }
       
-      /* Estilos da Tela de Início */
+      /* Tela de Início (Fica por cima do ambiente que já está rodando) */
       #start-screen {
         position: fixed;
         top: 0; left: 0; width: 100vw; height: 100vh;
@@ -46,31 +46,39 @@
         font-family: monospace; font-size: 11px; color: #0f0;
         background: rgba(0,0,0,0.6); padding: 6px 8px; border-radius: 4px;
         z-index: 100; pointer-events: none; white-space: pre;
-        display: none; /* Escondido até iniciar */
+        display: none;
       }
     </style>
   </head>
   <body>
     
-    <!-- TELA DE INÍCIO -->
+    <!-- TELA DE INÍCIO (Capa) -->
     <div id="start-screen">
-      <h1>Ambiente Virtual AR</h1>
-      <p>Os lasers e a física do ambiente já estão carregados. Clique abaixo para ligar a câmera e iniciar a leitura dos marcadores.</p>
+      <h1>Ambiente Virtual Carregado</h1>
+      <p>A câmera e os sensores já estão rodando em segundo plano. Clique abaixo para revelar o ambiente e ler os marcadores.</p>
       <button id="start-btn">Iniciar Experiência</button>
     </div>
 
     <div id="debug">Aguardando marcadores...</div>
 
-    <!-- O A-SCENE começa escondido/pausado -->
+    <!-- CENA AR (Inicia imediatamente) -->
     <a-scene
-      embedded
-      arjs="detectionMode: mono_and_matrix; debugUIEnabled: false;"
+      arjs="detectionMode: mono; debugUIEnabled: false;"
       vr-mode-ui="enabled: false"
       renderer="logarithmicDepthBuffer: true;"
-      id="ar-scene"
     >
-      <!-- Grid virtual para mostrar que o ambiente 3D já carregou -->
-      <a-grid position="0 0 -3" width="10" height="10" cell-size="0.5" color="#444" opacity="0.3"></a-grid>
+      <!-- Grid virtual e Cubo no ambiente (Visíveis antes de achar o marcador) -->
+      <a-entity position="0 0 -2">
+        <a-grid width="5" height="5" cell-size="0.5" color="#00ff00" opacity="0.3"></a-grid>
+        <a-box
+          id="cubo-teste"
+          position="0 1 0"
+          width="0.4"
+          height="0.4"
+          depth="0.4"
+          color="#44aa88"
+        ></a-box>
+      </a-entity>
 
       <!-- Marcador 1 (Esquerdo) → Laser Vermelho -->
       <a-marker type="pattern" url="markers/01-pdf.patt" id="marker1" smooth="true" smoothCount="5" smoothTolerance="0.01">
@@ -82,7 +90,7 @@
         <a-entity laser="color: #3399ff; id: laser2"></a-entity>
       </a-marker>
 
-      <!-- Objeto interativo de teste -->
+      <!-- Objeto interativo de teste (Preso ao ambiente, não aos marcadores) -->
       <a-box
         id="cubo"
         position="0 1 -2"
@@ -97,7 +105,7 @@
     </a-scene>
 
     <script>
-      // Lógica do Botão de Início
+      // Lógica do Botão de Início (Apenas esconde a capa visual)
       document.getElementById('start-btn').addEventListener('click', function() {
         const startScreen = document.getElementById('start-screen');
         startScreen.style.opacity = '0';
@@ -105,11 +113,11 @@
         setTimeout(() => {
           startScreen.style.display = 'none';
           document.getElementById('debug').style.display = 'block';
-        }, 500); // Espera a transição de opacidade terminar
+        }, 500); 
       });
 
       // ============================================================
-      // COMPONENTE: LASER (Mantido igual)
+      // COMPONENTE: LASER
       // ============================================================
       AFRAME.registerComponent('laser', {
         schema: { color: { default: 'red' }, id: { type: 'string' } },
@@ -159,7 +167,7 @@
       });
 
       // ============================================================
-      // COMPONENTE: INTERACTIVE (Mantido igual)
+      // COMPONENTE: INTERACTIVE
       // ============================================================
       AFRAME.registerComponent('interactive', {
         init: function () {

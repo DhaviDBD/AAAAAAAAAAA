@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Projeto Lasers AR</title>
+
+    <!-- Bibliotecas via CDN -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.0/aframe/build/aframe-ar.min.js"></script>
+
+    <style>
+      html, body { margin: 0; padding: 0; overflow: hidden; }
+      #debug {
+        position: fixed; top: 8px; left: 8px;
+        font-family: monospace; font-size: 11px; color: #0f0;
+        background: rgba(0,0,0,0.6); padding: 6px 8px; border-radius: 4px;
+        z-index: 9999; pointer-events: none; white-space: pre;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="debug">Aguardando marcadores...</div>
+
+    <a-scene
+      embedded
+      arjs="detectionMode: mono_and_matrix; debugUIEnabled: false;"
+      vr-mode-ui="enabled: false"
+      renderer="logarithmicDepthBuffer: true;"
+    >
+      <!-- Marcador 1 (Esquerdo) → Laser Vermelho -->
+      <a-marker type="pattern" url="markers/01-pdf.patt" id="marker1" smooth="true" smoothCount="5" smoothTolerance="0.01">
+        <a-entity laser="color: #ff3333; id: laser1"></a-entity>
+      </a-marker>
+
+      <!-- Marcador 2 (Direito) → Laser Azul -->
+      <a-marker type="pattern" url="markers/02-pdf.patt" id="marker2" smooth="true" smoothCount="5" smoothTolerance="0.01">
+        <a-entity laser="color: #3399ff; id: laser2"></a-entity>
+      </a-marker>
+
+      <!-- Objeto interativo de teste -->
+      <a-box
+        id="cubo"
+        position="0 1 -2"
+        width="0.5"
+        height="0.5"
+        depth="0.5"
+        color="#44aa88"
+        interactive
+      ></a-box>
+
+      <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+      // ============================================================
+      // COMPONENTE: LASER
+      // ============================================================
+      AFRAME.registerComponent('laser', {
+        schema: {
+          color: { default: 'red' },
+          id: { type: 'string' }
+        },
+
+        init: function () {
+          this.raycaster = new THREE.Raycaster();
+          this.raycaster.far = 15;
+          this.hoveredEl = null;
+
+          // Cilindro visual que representa o laser
+          const beam = document.createElement('a-cylinder');
+          beam.setAttribute('radius', 0.005);
+          beam.setAttribute('height', 5);
+          beam.setAttribute('color', this.data.color);
+          beam.setAttribute('position', '0 0 -2.5');
+          beam.setAttribute('rotation', '90 0 0');
+          this.el.appendChild(beam);
+        },
+
+        tick: function () {
+          // Posição e direção do raio no mundo
+          const origin = new THREE.Vector3();
+          this.el.object3D.getWorldPosition(origin);
+
+          const quaternion = new THREE.Quaternion();
+          this.el.object3D.getWorldQuaternion(quaternion);
+          const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion);
+
+          this.raycaster.set(origin, direction);
+
+          // Verifica interseção com objetos interativos
+          const interactiveEls = Array.from(document.querySelectorAll('[interactive]'));
+          const intersects = this.raycaster.intersectObjects(
+            interactiveEls.map((el) => el.object3D),
+            true
+          );
+
+          if (intersects.length > 0) {
+            let hitEl = intersects[0].object.el;
+            while (hitEl && !hitEl.hasAttribute('interactive')) {
+              hitEl = hitEl.parentEl;
+            }
+
+            if (hitEl && this.hoveredEl !== hitEl) {
+              if (this.hoveredEl) {
+                this.hoveredEl.emit('laser-hover-end', { laserId: this.data.id });
+              }
+              this.hoveredEl = hitEl;
+              this.hoveredEl.emit('laser-hover-start', {
+                laserId: this.data.id,
+                position: origin.clone()
+              });
+            } else if (hitEl && this.hoveredEl === hitEl) {
+              this.hoveredEl.emit('laser-hover-update', {
+                laserId: this.data.id,
+                position: origin.clone()
+              });
+            }
+          } else if (this.hoveredEl) {
+            this.hoveredEl.emit('laser-hover-end', { laserId: this.data.id });
+            this.hoveredEl = null;
+          }
+
+          // HUD de debug
+          const debug = document.getElementById('debug');
+          if (debug) {
+            debug.textContent = `laser: ${this.data.id}\nhover: ${this.hoveredEl ? this.hoveredEl.id : '-'}`;
+          }
+        }
+      });
+
+      // ============================================================
+      // COMPONENTE: INTERACTIVE
+      // ============================================================
+      AFRAME.registerComponent('interactive', {
+        init: function () {
+          this.hoveringLasers = new Map();
+          this.dwellTimers = new Map();
+          this.grabState = null;
+
+          // --- LASER ENTROU NO OBJETO ---
+          this.el.addEventListener('laser-hover-start', (evt) => {
+            const laserId = evt.detail.laserId;
+            this.hoveringLasers.set(laserId, {
+              startTime: performance.now(),
+              position: evt.detail.position
+            });
+
+            // Inicia contagem de 3 segundos para o click
+            if (this.dwellTimers.has(laserId)) clearTimeout(this.dwellTimers.get(laserId));
+            const timer = setTimeout(() => {
+              this.el.emit('click');
+              this.dwellTimers.delete(laserId);
+            }, 3000);
+            this.dwellTimers.set(laserId, timer);
+
+            this.checkGrab();
+          });
+
+          // --- LASER SE MOVEU ---
+          this.el.addEventListener('laser-hover-update', (evt) => {
+            const laserId = evt.detail.laserId;
+            if (this.hoveringLasers.has(laserId)) {
+              this.hoveringLasers.get(laserId).position = evt.detail.position;
+            }
+            this.updateGrab();
+          });
+
+          // --- LASER SAIU DO OBJETO ---
+          this.el.addEventListener('laser-hover-end', (evt) => {
+            const laserId = evt.detail.laserId;
+            this.hoveringLasers.delete(laserId);
+
+            if (this.dwellTimers.has(laserId)) {
+              clearTimeout(this.dwellTimers.get(laserId));
+              this.dwellTimers.delete(laserId);
+            }
+
+            this.checkGrab();
+          });
+
+          // --- AÇÃO DE CLICK ---
+          this.el.addEventListener('click', () => {
+            const currentColor = this.el.getAttribute('color');
+            const newColor = currentColor === '#44aa88' ? '#ffaa00' : '#44aa88';
+            this.el.setAttribute('color', newColor);
+          });
+        },
+
+        // Lógica de Grab
+        checkGrab: function () {
+          const activeLasers = Array.from(this.hoveringLasers.keys());
+
+          if (activeLasers.length >= 2) {
+            const ids = activeLasers.slice(0, 2);
+            const pos1 = this.hoveringLasers.get(ids[0]).position;
+            const pos2 = this.hoveringLasers.get(ids[1]).position;
+            const midpoint = new THREE.Vector3().addVectors(pos1, pos2).multiplyScalar(0.5);
+
+            this.grabState = {
+              laserIds: ids,
+              initialMidpoint: midpoint.clone(),
+              initialObjectPosition: this.el.object3D.position.clone()
+            };
+            this.el.emit('grab-start');
+          } else if (this.grabState) {
+            this.el.emit('grab-end');
+            this.grabState = null;
+          }
+        },
+
+        updateGrab: function () {
+          if (!this.grabState) return;
+
+          const { laserIds, initialMidpoint, initialObjectPosition } = this.grabState;
+          if (!this.hoveringLasers.has(laserIds[0]) || !this.hoveringLasers.has(laserIds[1])) return;
+
+          const pos1 = this.hoveringLasers.get(laserIds[0]).position;
+          const pos2 = this.hoveringLasers.get(laserIds[1]).position;
+          const currentMidpoint = new THREE.Vector3().addVectors(pos1, pos2).multiplyScalar(0.5);
+
+          const delta = new THREE.Vector3().subVectors(currentMidpoint, initialMidpoint);
+          this.el.object3D.position.copy(initialObjectPosition).add(delta);
+        }
+      });
+    </script>
+  </body>
+</html>

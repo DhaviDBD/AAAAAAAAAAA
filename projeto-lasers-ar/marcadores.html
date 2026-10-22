@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Marcadores para Leitura</title>
+  <style>
+    body {
+      margin: 0; padding: 0;
+      background-color: #121212; /* Fundo escuro ajuda a câmera a focar no papel */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      gap: 50px;
+    }
+    .marcador {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(255,255,255,0.1);
+    }
+    img {
+      width: 400px; /* Tamanho grande na tela */
+      height: auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="marcador">
+    <h2 style="text-align:center; font-family:sans-serif; margin-top:0;">Marcador 1 (Vermelho)</h2>
+    <!-- Aponta para o seu PDF -->
+    <img src="markers/01-pdf.pdf" alt="Marcador 1">
+  </div>
+
+  <div class="marcador">
+    <h2 style="text-align:center; font-family:sans-serif; margin-top:0;">Marcador 2 (Azul)</h2>
+    <!-- Aponta para o seu PDF -->
+    <img src="markers/02-pdf.pdf" alt="Marcador 2">
+  </div>
+
+</body>
+</html>

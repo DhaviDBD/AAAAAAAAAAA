@@ -3,39 +3,27 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>Projeto Lasers AR</title>
+    <title>Projeto Lasers AR - MindAR</title>
 
     <!-- Bibliotecas via CDN -->
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.0/aframe/build/aframe-ar.min.js"></script>
+    <!-- MindAR integrado ao A-Frame -->
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
 
     <style>
       html, body { margin: 0; padding: 0; overflow: hidden; font-family: sans-serif; }
       
-      /* Tela de Início (Fica por cima do ambiente que já está rodando) */
+      /* Tela de Início (Capa) */
       #start-screen {
-        position: fixed;
-        top: 0; left: 0; width: 100vw; height: 100vh;
-        background: #1a1a1a;
-        color: white;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-        transition: opacity 0.5s ease;
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: #1a1a1a; color: white;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        z-index: 9999; transition: opacity 0.5s ease; text-align: center;
       }
-      #start-screen h1 { margin-bottom: 10px; }
-      #start-screen p { color: #aaa; margin-bottom: 30px; max-width: 80%; text-align: center;}
+      #start-screen p { max-width: 80%; color: #aaa; margin-bottom: 20px;}
       #start-btn {
-        padding: 15px 40px;
-        font-size: 18px;
-        font-weight: bold;
-        color: #fff;
-        background-color: #007bff;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
+        padding: 15px 40px; font-size: 18px; font-weight: bold;
+        color: #fff; background-color: #007bff; border: none; border-radius: 8px; cursor: pointer;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
       }
       #start-btn:active { background-color: #0056b3; transform: scale(0.98); }
@@ -45,87 +33,70 @@
         position: fixed; top: 8px; left: 8px;
         font-family: monospace; font-size: 11px; color: #0f0;
         background: rgba(0,0,0,0.6); padding: 6px 8px; border-radius: 4px;
-        z-index: 100; pointer-events: none; white-space: pre;
-        display: none;
+        z-index: 100; pointer-events: none; white-space: pre; display: none;
       }
     </style>
   </head>
   <body>
     
-    <!-- TELA DE INÍCIO (Capa) -->
+    <!-- Tela Inicial -->
     <div id="start-screen">
-      <h1>Ambiente Virtual Carregado</h1>
-      <p>A câmera e os sensores já estão rodando em segundo plano. Clique abaixo para revelar o ambiente e ler os marcadores.</p>
+      <h1>Ambiente Virtual Pronto</h1>
+      <p>A câmera e os sensores já estão rodando em segundo plano. Clique abaixo para iniciar a leitura dos marcadores.</p>
       <button id="start-btn">Iniciar Experiência</button>
     </div>
 
     <div id="debug">Aguardando marcadores...</div>
 
-    <!-- CENA AR (Inicia imediatamente) -->
-    <a-scene
-      arjs="detectionMode: mono; debugUIEnabled: false;"
+    <!-- CENA MINDAR -->
+    <a-scene 
+      mindar-image="imageTargetSrc: imagens-juntas.mind; maxTrack: 2; uiLoading: no; uiScanning: no; uiError: no;" 
+      color-space="sRGB" 
+      renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
-      renderer="logarithmicDepthBuffer: true;"
+      device-orientation-permission-ui="enabled: false"
     >
-      <!-- Grid virtual e Cubo no ambiente (Visíveis antes de achar o marcador) -->
+      <!-- Câmera configurada para não girar com o movimento do celular -->
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <!-- Objetos 3D do ambiente (Grid e Cubo) -->
       <a-entity position="0 0 -2">
         <a-grid width="5" height="5" cell-size="0.5" color="#00ff00" opacity="0.3"></a-grid>
-        <a-box
-          id="cubo-teste"
-          position="0 1 0"
-          width="0.4"
-          height="0.4"
-          depth="0.4"
-          color="#44aa88"
-        ></a-box>
+        <a-box id="cubo" position="0 1 0" width="0.5" height="0.5" depth="0.5" color="#44aa88" interactive></a-box>
       </a-entity>
 
-      <!-- Marcador 1 (Esquerdo) → Laser Vermelho -->
-      <a-marker type="pattern" url="markers/01-pdf.patt" id="marker1" smooth="true" smoothCount="5" smoothTolerance="0.01">
+      <!-- Alvo 0 (Primeira imagem que você subiu no compilador) -> Laser Vermelho -->
+      <a-entity mindar-image-target="targetIndex: 0">
         <a-entity laser="color: #ff3333; id: laser1"></a-entity>
-      </a-marker>
+      </a-entity>
 
-      <!-- Marcador 2 (Direito) → Laser Azul -->
-      <a-marker type="pattern" url="markers/02-pdf.patt" id="marker2" smooth="true" smoothCount="5" smoothTolerance="0.01">
+      <!-- Alvo 1 (Segunda imagem que você subiu no compilador) -> Laser Azul -->
+      <a-entity mindar-image-target="targetIndex: 1">
         <a-entity laser="color: #3399ff; id: laser2"></a-entity>
-      </a-marker>
+      </a-entity>
 
-      <!-- Objeto interativo de teste (Preso ao ambiente, não aos marcadores) -->
-      <a-box
-        id="cubo"
-        position="0 1 -2"
-        width="0.5"
-        height="0.5"
-        depth="0.5"
-        color="#44aa88"
-        interactive
-      ></a-box>
-
-      <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-      // Lógica do Botão de Início (Apenas esconde a capa visual)
+      // 1. Esconde a tela inicial ao clicar no botão
       document.getElementById('start-btn').addEventListener('click', function() {
         const startScreen = document.getElementById('start-screen');
         startScreen.style.opacity = '0';
-        
         setTimeout(() => {
           startScreen.style.display = 'none';
           document.getElementById('debug').style.display = 'block';
         }, 500); 
       });
 
-      // ============================================================
-      // COMPONENTE: LASER
-      // ============================================================
+      // 2. COMPONENTE: LASER (Atira o raio e verifica colisões)
       AFRAME.registerComponent('laser', {
         schema: { color: { default: 'red' }, id: { type: 'string' } },
         init: function () {
           this.raycaster = new THREE.Raycaster();
-          this.raycaster.far = 15;
+          this.raycaster.far = 15; // Alcance do laser
           this.hoveredEl = null;
 
+          // Cilindro visual do laser
           const beam = document.createElement('a-cylinder');
           beam.setAttribute('radius', 0.005);
           beam.setAttribute('height', 5);
@@ -166,19 +137,19 @@
         }
       });
 
-      // ============================================================
-      // COMPONENTE: INTERACTIVE
-      // ============================================================
+      // 3. COMPONENTE: INTERACTIVE (Dwell-click e Grab)
       AFRAME.registerComponent('interactive', {
         init: function () {
           this.hoveringLasers = new Map();
           this.dwellTimers = new Map();
           this.grabState = null;
 
+          // Laser entrou no objeto
           this.el.addEventListener('laser-hover-start', (evt) => {
             const laserId = evt.detail.laserId;
             this.hoveringLasers.set(laserId, { startTime: performance.now(), position: evt.detail.position });
 
+            // Inicia o timer de 3 segundos
             if (this.dwellTimers.has(laserId)) clearTimeout(this.dwellTimers.get(laserId));
             const timer = setTimeout(() => {
               this.el.emit('click');
@@ -188,12 +159,14 @@
             this.checkGrab();
           });
 
+          // Laser se moveu
           this.el.addEventListener('laser-hover-update', (evt) => {
             const laserId = evt.detail.laserId;
             if (this.hoveringLasers.has(laserId)) this.hoveringLasers.get(laserId).position = evt.detail.position;
             this.updateGrab();
           });
 
+          // Laser saiu do objeto
           this.el.addEventListener('laser-hover-end', (evt) => {
             const laserId = evt.detail.laserId;
             this.hoveringLasers.delete(laserId);
@@ -204,11 +177,13 @@
             this.checkGrab();
           });
 
+          // Ação de Click concluída
           this.el.addEventListener('click', () => {
             const currentColor = this.el.getAttribute('color');
             this.el.setAttribute('color', currentColor === '#44aa88' ? '#ffaa00' : '#44aa88');
           });
         },
+        
         checkGrab: function () {
           const activeLasers = Array.from(this.hoveringLasers.keys());
           if (activeLasers.length >= 2) {
@@ -216,21 +191,29 @@
             const pos1 = this.hoveringLasers.get(ids[0]).position;
             const pos2 = this.hoveringLasers.get(ids[1]).position;
             const midpoint = new THREE.Vector3().addVectors(pos1, pos2).multiplyScalar(0.5);
-            this.grabState = { laserIds: ids, initialMidpoint: midpoint.clone(), initialObjectPosition: this.el.object3D.position.clone() };
+            
+            this.grabState = { 
+              laserIds: ids, 
+              initialMidpoint: midpoint.clone(), 
+              initialObjectPosition: this.el.object3D.position.clone() 
+            };
             this.el.emit('grab-start');
           } else if (this.grabState) {
             this.el.emit('grab-end');
             this.grabState = null;
           }
         },
+
         updateGrab: function () {
           if (!this.grabState) return;
           const { laserIds, initialMidpoint, initialObjectPosition } = this.grabState;
           if (!this.hoveringLasers.has(laserIds[0]) || !this.hoveringLasers.has(laserIds[1])) return;
+          
           const pos1 = this.hoveringLasers.get(laserIds[0]).position;
           const pos2 = this.hoveringLasers.get(laserIds[1]).position;
           const currentMidpoint = new THREE.Vector3().addVectors(pos1, pos2).multiplyScalar(0.5);
           const delta = new THREE.Vector3().subVectors(currentMidpoint, initialMidpoint);
+          
           this.el.object3D.position.copy(initialObjectPosition).add(delta);
         }
       });

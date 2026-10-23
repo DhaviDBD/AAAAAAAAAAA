@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101522">
+  <title>Projeto Lasers AR</title>
+
+  <!-- Dependências do A-Frame e MindAR Image -->
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #101522; font-family: system-ui, sans-serif; }
+
+    /* Não usar z-index negativo no vídeo/canvas: isso pode escondê-los atrás do fundo. */
+    a-scene { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; }
+    a-scene canvas { display: block; }
+
+    #start-screen {
+      position: fixed; inset: 0; z-index: 10; display: grid; place-items: center;
+      padding: 24px; color: white; text-align: center;
+      background: linear-gradient(145deg, rgba(11,16,31,.96), rgba(28,42,65,.94));
+      transition: opacity .25s ease;
+    }
+    #start-screen.hidden { opacity: 0; pointer-events: none; }
+    .card { width: min(440px, 100%); padding: 28px; border: 1px solid #ffffff24; border-radius: 20px; background: #ffffff0d; box-shadow: 0 18px 60px #0008; }
+    h1 { margin: 0 0 12px; font-size: clamp(1.6rem, 5vw, 2.2rem); }
+    p { color: #cbd5e1; line-height: 1.5; }
+    #start-btn { border: 0; border-radius: 12px; padding: 14px 24px; color: #101522; background: #7cf0c5; font-weight: 800; font-size: 1rem; cursor: pointer; }
+    #start-btn:disabled { opacity: .6; cursor: wait; }
+    #status { position: fixed; z-index: 5; left: 12px; right: 12px; top: 12px; width: fit-content; max-width: calc(100% - 24px); padding: 9px 12px; border-radius: 10px; color: white; background: #101522cc; font: 13px/1.4 system-ui, sans-serif; pointer-events: none; }
+    #status[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <div id="start-screen">
+    <div class="card">
+      <h1>Projeto Lasers AR</h1>
+      <p>Autorize o uso da câmera e aponte para um dos marcadores impressos ou exibidos em outra tela.</p>
+      <button id="start-btn" type="button">Iniciar experiência</button>
+      <p id="start-message" aria-live="polite"></p>
+    </div>
+  </div>
+  <div id="status" aria-live="polite" hidden>Preparando a câmera…</div>
+
+  <a-scene
+    mindar-image="imageTargetSrc: ./mover.mind; maxTrack: 2; autoStart: false; uiLoading: no; uiScanning: no; uiError: no;"
+    color-space="sRGB"
+    renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+
+    <a-assets>
+      <!-- Objetos simples, criados no próprio A-Frame; não dependem de arquivos 3D externos. -->
+    </a-assets>
+
+    <!-- O conteúdo de cada alvo precisa ser filho do respectivo mindar-image-target,
+         assim ele acompanha a posição e a orientação do marcador. Índices conforme
+         a ordem em que os alvos foram adicionados ao gerar mover.mind. -->
+    <a-entity mindar-image-target="targetIndex: 0">
+      <!-- Cubo de teste centrado na origem do marcador. O pequeno afastamento em Z
+           evita sobreposição com o plano da imagem impressa. -->
+      <a-box id="cubo-marcador-1" position="0 0 0.12" width="0.28" height="0.28" depth="0.28"
+             color="#ff3b30" material="metalness: .15; roughness: .35">
+        <a-animation attribute="rotation" to="0 360 0" dur="4000" easing="linear" repeat="indefinite"></a-animation>
+      </a-box>
+      <a-ring position="0 0 0.01" radius-inner="0.42" radius-outer="0.46" color="#ff3b30" material="shader: flat; opacity: .9"></a-ring>
+      <a-text value="ALVO 1 - CUBO CENTRAL" align="center" color="#ffffff" width="2.2" position="0 -0.58 0.06"></a-text>
+    </a-entity>
+
+    <a-entity mindar-image-target="targetIndex: 1">
+      <!-- Mesmo teste no segundo alvo, com outra cor para distinguir os índices. -->
+      <a-box id="cubo-marcador-2" position="0 0 0.12" width="0.28" height="0.28" depth="0.28"
+             color="#3399ff" material="metalness: .15; roughness: .35">
+        <a-animation attribute="rotation" to="0 360 0" dur="4000" easing="linear" repeat="indefinite"></a-animation>
+      </a-box>
+      <a-ring position="0 0 0.01" radius-inner="0.42" radius-outer="0.46" color="#3399ff" material="shader: flat; opacity: .9"></a-ring>
+      <a-text value="ALVO 2 - CUBO CENTRAL" align="center" color="#ffffff" width="2.2" position="0 -0.58 0.06"></a-text>
+    </a-entity>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  </a-scene>
+
+  <script>
+    (() => {
+      const scene = document.querySelector('a-scene');
+      const startScreen = document.getElementById('start-screen');
+      const startButton = document.getElementById('start-btn');
+      const startMessage = document.getElementById('start-message');
+      const status = document.getElementById('status');
+      let started = false;
+
+      const setStatus = (message, visible = true) => {
+        status.textContent = message;
+        status.hidden = !visible;
+      };
+
+      // A câmera só é solicitada após o toque, que também satisfaz as restrições
+      // de interação do navegador em dispositivos móveis.
+      startButton.addEventListener('click', async () => {
+        if (started) return;
+        startButton.disabled = true;
+        startMessage.textContent = 'Solicitando acesso à câmera…';
+        setStatus('Iniciando câmera e carregando os marcadores…');
+        try {
+          if (!window.isSecureContext) {
+            throw new Error('Abra esta página por HTTPS ou em localhost para permitir o uso da câmera.');
+          }
+          await new Promise((resolve) => {
+            if (scene.hasLoaded) return resolve();
+            scene.addEventListener('loaded', resolve, { once: true });
+          });
+          const system = scene.systems['mindar-image-system'];
+          if (!system) throw new Error('MindAR não inicializou. Confira sua conexão e os scripts externos.');
+          await system.start();
+          started = true;
+          startScreen.classList.add('hidden');
+          setStatus('Câmera ativa. Aponte para um marcador.');
+        } catch (error) {
+          console.error('Falha ao iniciar AR:', error);
+          const message = error && error.message ? error.message : 'Não foi possível iniciar a câmera.';
+          startMessage.textContent = message + ' Verifique a permissão da câmera e se mover.mind está no mesmo diretório do index.html.';
+          setStatus('Falha ao iniciar: ' + message);
+          startButton.disabled = false;
+        }
+      });
+
+      scene.addEventListener('arReady', () => setStatus('Câmera ativa. Aponte para um marcador.'));
+      scene.addEventListener('arError', (event) => {
+        console.error('Erro do MindAR:', event);
+        setStatus('Erro de câmera ou de inicialização do MindAR. Confira o console e as permissões.');
+      });
+      scene.addEventListener('targetFound', (event) => {
+        const index = event.target && event.target.getAttribute('mindar-image-target')?.targetIndex;
+        setStatus(`Marcador ${Number(index) + 1} reconhecido.`);
+      });
+      scene.addEventListener('targetLost', () => setStatus('Marcador perdido. Aponte novamente para a imagem.'));
+    })();
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4ede176e94081dd',t:'MTc5MjcyODUwNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

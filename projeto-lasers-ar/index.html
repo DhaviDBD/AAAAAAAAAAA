@@ -14,7 +14,6 @@
     * { box-sizing: border-box; }
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #101522; font-family: system-ui, sans-serif; }
 
-    /* Não usar z-index negativo no vídeo/canvas: isso pode escondê-los atrás do fundo. */
     a-scene { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; }
     a-scene canvas { display: block; }
 
@@ -46,7 +45,7 @@
   <div id="status" aria-live="polite" hidden>Preparando a câmera…</div>
 
   <a-scene
-    mindar-image="imageTargetSrc: ./mover.mind; maxTrack: 2; autoStart: false; uiLoading: no; uiScanning: no; uiError: no;"
+    mindar-image="imageTargetSrc: ./01-pdf.mind; maxTrack: 2; autoStart: false; uiLoading: no; uiScanning: no; uiError: no;"
     color-space="sRGB"
     renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
     vr-mode-ui="enabled: false"
@@ -56,12 +55,8 @@
       <!-- Objetos simples, criados no próprio A-Frame; não dependem de arquivos 3D externos. -->
     </a-assets>
 
-    <!-- O conteúdo de cada alvo precisa ser filho do respectivo mindar-image-target,
-         assim ele acompanha a posição e a orientação do marcador. Índices conforme
-         a ordem em que os alvos foram adicionados ao gerar mover.mind. -->
+    <!-- Alvo 0: Corresponde ao primeiro marcador (01-pdf) -->
     <a-entity mindar-image-target="targetIndex: 0">
-      <!-- Cubo de teste centrado na origem do marcador. O pequeno afastamento em Z
-           evita sobreposição com o plano da imagem impressa. -->
       <a-box id="cubo-marcador-1" position="0 0 0.12" width="0.28" height="0.28" depth="0.28"
              color="#ff3b30" material="metalness: .15; roughness: .35">
         <a-animation attribute="rotation" to="0 360 0" dur="4000" easing="linear" repeat="indefinite"></a-animation>
@@ -70,8 +65,8 @@
       <a-text value="ALVO 1 - CUBO CENTRAL" align="center" color="#ffffff" width="2.2" position="0 -0.58 0.06"></a-text>
     </a-entity>
 
+    <!-- Alvo 1: Corresponde ao segundo marcador (02-pdf) -->
     <a-entity mindar-image-target="targetIndex: 1">
-      <!-- Mesmo teste no segundo alvo, com outra cor para distinguir os índices. -->
       <a-box id="cubo-marcador-2" position="0 0 0.12" width="0.28" height="0.28" depth="0.28"
              color="#3399ff" material="metalness: .15; roughness: .35">
         <a-animation attribute="rotation" to="0 360 0" dur="4000" easing="linear" repeat="indefinite"></a-animation>
@@ -97,8 +92,6 @@
         status.hidden = !visible;
       };
 
-      // A câmera só é solicitada após o toque, que também satisfaz as restrições
-      // de interação do navegador em dispositivos móveis.
       startButton.addEventListener('click', async () => {
         if (started) return;
         startButton.disabled = true;
@@ -121,7 +114,7 @@
         } catch (error) {
           console.error('Falha ao iniciar AR:', error);
           const message = error && error.message ? error.message : 'Não foi possível iniciar a câmera.';
-          startMessage.textContent = message + ' Verifique a permissão da câmera e se mover.mind está no mesmo diretório do index.html.';
+          startMessage.textContent = message + ' Verifique a permissão da câmera e se 01-pdf.mind está no mesmo diretório do index.html.';
           setStatus('Falha ao iniciar: ' + message);
           startButton.disabled = false;
         }
@@ -139,5 +132,5 @@
       scene.addEventListener('targetLost', () => setStatus('Marcador perdido. Aponte novamente para a imagem.'));
     })();
   </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4ede176e94081dd',t:'MTc5MjcyODUwNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
